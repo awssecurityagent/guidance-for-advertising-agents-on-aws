@@ -6654,13 +6654,16 @@ ${formattedJson}
 
   /**
    * Handle agent routing from a Nova Sonic tool-use event.
-   * Resolves the EnrichedAgent by name and invokes it with the transcribed query.
+   * Resolves the EnrichedAgent by name and invokes it directly via getAgentResponse.
+   * The user's voice transcript was already added as a user message in the
+   * final-transcript handler, so we skip sendMessage (which would add a duplicate)
+   * and call getAgentResponse directly — the same path the text chat uses.
+   *
+   * stopVoiceRecording() is already called by the turn-complete handler before
+   * this method is invoked, so we don't call it again here.
    */
   private handleVoiceAgentRouting(agentName: string, query: string): void {
     console.log(`🎤 Voice routing: agent="${agentName}", query="${query.substring(0, 80)}..."`);
-
-    // Stop the voice session first
-    this.stopVoiceRecording();
 
     // Resolve the EnrichedAgent from the available agents list
     const resolvedAgent = this.agentConfig.getAgent(agentName);
@@ -6671,16 +6674,19 @@ ${formattedJson}
       return;
     }
 
-    console.log(`🎤 Voice routing: Resolved to "${resolvedAgent.name}" (display: "${resolvedAgent.displayName}")`);
+    console.log(`🎤 Voice routing: Resolved to "${resolvedAgent.name}" (display: "${resolvedAgent.displayName}"). Invoking agent directly.`);
 
-    // Prepend @[AgentName] to the query so the existing sendMessage flow
-    // picks up the agent mention via parseAgentMentions and sets
-    // directMentionTarget correctly in invokeAgentWithStreaming.
-    // This mirrors how a user types "@[AgentName] ..." or how scenarios invoke agents.
-    const agentMentionName = resolvedAgent.name || agentName;
-    this.currentMessage = `@[${agentMentionName}] ${query}`;
+    // Track the agent for future messages
+    this.lastAgent = resolvedAgent;
+    this.selectedAgentForMessage = resolvedAgent;
+
+    // Clear the input field
+    this.currentMessage = '';
     this.changeDetectorRef.detectChanges();
-    this.sendMessage(resolvedAgent);
+    console.log(query)
+    // Invoke the agent directly — the user message already exists from the
+    // final-transcript handler, so we go straight to getAgentResponse.
+    this.getAgentResponse(query, resolvedAgent);
   }
 
   /**

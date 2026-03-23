@@ -34,7 +34,7 @@
             <span class="material-icons">arrow_back</span>
             Cancel
           </button>
-          <button class="nova-button primary" (click)="editorPanel?.handleSave()" [disabled]="isLoading">
+          <button class="nova-button primary" (click)="editorPanel.handleSave()" [disabled]="isLoading">
             <span class="material-icons">save</span>
             {{ isLoading ? 'Saving...' : 'Save Agent' }}
           </button>
